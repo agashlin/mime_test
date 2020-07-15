@@ -12,15 +12,27 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
                   .header("Content-Type", "text/html")
                   .body(Body::from(r#"Hello!
 <ul>
+<li><a href="/test.html">/html</a></li>
+<li><a href="/att/test.html">/att/html</a></li>
 <li><a href="/test.xml">/xml</a></li>
 <li><a href="/att/test.xml">/att/xml</a></li>
-<li><a href="/image.png">/img</a></li>
-<li><a href="/att/image.png">/att/img</a></li>
+<li><a href="/test.png">/img</a></li>
+<li><a href="/att/test.png">/att/img</a></li>
+<li><a href="/nomime/test.png">/nomime/img</a></li>
+<li><a href="/att/nomime/test.png">/att/nomime/img</a></li>
+<li><a href="/test.pdf">/pdf</a></li>
+<li><a href="/att/test.pdf">/att/pdf</a></li>
 </ul>"#)).unwrap())
     }
 
     if req.uri().path().starts_with("/att/") {
         builder = builder.header("Content-Disposition", "attachment");
+    }
+
+    if req.uri().path().ends_with("/test.html") {
+        return Ok(builder
+                  .header("Content-Type", "text/html")
+                  .body(Body::from("Hello")).unwrap());
     }
 
     if req.uri().path().ends_with("/test.xml") {
@@ -32,9 +44,20 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 </something>
 "#)).unwrap());
     }
+    if req.uri().path().ends_with("/nomime/test.png") {
+       return Ok(builder
+                 .body(Body::from("Hello World!")).unwrap())
+    }
+
     if req.uri().path().ends_with("/test.png") {
        return Ok(builder
                  .header("Content-Type", "image/png")
+                 .body(Body::from("Hello World!")).unwrap())
+    }
+
+    if req.uri().path().ends_with("/test.pdf") {
+       return Ok(builder
+                 .header("Content-Type", "application/pdf")
                  .body(Body::from("Hello World!")).unwrap())
     }
 
