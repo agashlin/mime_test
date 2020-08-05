@@ -9,8 +9,9 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let mut builder = Response::builder();
     if req.uri().path() == "/" {
         return Ok(builder
-                  .header("Content-Type", "text/html")
-                  .body(Body::from(r#"Hello!
+            .header("Content-Type", "text/html")
+            .body(Body::from(
+                r#"Hello!
 <ul>
 <li><a href="/test.html">/html</a></li>
 <li><a href="/att/test.html">/att/html</a></li>
@@ -36,7 +37,9 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 <li><a href="/att/test.pdf">/att/pdf</a></li>
 <li><a href="/nomime/test.pdf">/nomime/pdf</a></li>
 <li><a href="/att/nomime/test.pdf">/att/nomime/pdf</a></li>
-</ul>"#)).unwrap())
+</ul>"#,
+            ))
+            .unwrap());
     }
 
     if req.uri().path().starts_with("/att/") {
@@ -45,84 +48,99 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
     if req.uri().path().ends_with("/test.html") {
         return Ok(builder
-                  .header("Content-Type", "text/html")
-                  .body(Body::from("Hello")).unwrap());
+            .header("Content-Type", "text/html")
+            .body(Body::from("Hello"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.shtml") {
         return Ok(builder
-                  .header("Content-Type", "text/html")
-                  .body(Body::from("Hello")).unwrap());
+            .header("Content-Type", "text/html")
+            .body(Body::from("Hello"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.blah") {
         return Ok(builder
-                  .header("Content-Type", "text/html")
-                  .body(Body::from("Hello")).unwrap());
+            .header("Content-Type", "text/html")
+            .body(Body::from("Hello"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.blah2") {
         return Ok(builder
-                  .header("Content-Type", "application/pdf")
-                  .body(Body::from("Hello")).unwrap());
+            .header("Content-Type", "application/pdf")
+            .body(Body::from("Hello"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.blah3") {
         return Ok(builder
-                  .header("Content-Type", "application/octet-stream")
-                  .body(Body::from("Hello")).unwrap());
+            .header("Content-Type", "application/octet-stream")
+            .body(Body::from("Hello"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.xml") {
         return Ok(builder
-                  .header("Content-Type", "text/xml")
-                  .body(Body::from(r#"<?xml version = "1.0" encoding = "utf-8"?>
+            .header("Content-Type", "text/xml")
+            .body(Body::from(
+                r#"<?xml version = "1.0" encoding = "utf-8"?>
 
 <something>
 </something>
-"#)).unwrap());
+"#,
+            ))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test-app.xml") {
         return Ok(builder
-                  .header("Content-Type", "application/xml")
-                  .body(Body::from(r#"<?xml version = "1.0" encoding = "utf-8"?>
+            .header("Content-Type", "application/xml")
+            .body(Body::from(
+                r#"<?xml version = "1.0" encoding = "utf-8"?>
 
 <something>
 </something>
-"#)).unwrap());
+"#,
+            ))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/nomime/test.png") {
-       return Ok(builder
-                 .body(Body::from("Hello World!")).unwrap())
+        return Ok(builder.body(Body::from("Hello World!")).unwrap());
     }
 
     if req.uri().path().ends_with("/nomime/test.pdf") {
-       return Ok(builder
-                 .body(Body::from("Hello World!")).unwrap())
+        return Ok(builder.body(Body::from("Hello World!")).unwrap());
     }
 
     if req.uri().path().ends_with("/test.png") {
-       return Ok(builder
-                 .header("Content-Type", "image/png")
-                 .body(Body::from("Hello World!")).unwrap())
+        return Ok(builder
+            .header("Content-Type", "image/png")
+            .body(Body::from("Hello World!"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.svg") {
-       return Ok(builder
-                 .header("Content-Type", "image/svg+xml")
-                 .body(Body::from("Hello World!")).unwrap())
+        return Ok(builder
+            .header("Content-Type", "image/svg+xml")
+            .body(Body::from("Hello World!"))
+            .unwrap());
     }
 
     if req.uri().path().ends_with("/test.pdf") {
-       return Ok(builder
-                 .header("Content-Type", "application/pdf")
-                 .body(Body::from("Hello World!")).unwrap())
+        return Ok(builder
+            .header("Content-Type", "application/pdf")
+            .body(Body::from("Hello World!"))
+            .unwrap());
     }
 
     let status = StatusCode::NOT_FOUND;
-    Ok(builder.status(status).body(Body::from(status.canonical_reason().unwrap())).unwrap())
+    Ok(builder
+        .status(status)
+        .body(Body::from(status.canonical_reason().unwrap()))
+        .unwrap())
 }
 
 #[tokio::main]
