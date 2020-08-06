@@ -33,6 +33,8 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 <li><a href="/att/nomime/test.png">/att/nomime/img</a></li>
 <li><a href="/test.svg">/svg</a></li>
 <li><a href="/att/test.svg">/att/svg</a></li>
+<li><a href="/test.webp">/webp</a></li>
+<li><a href ="/att/test.webp">/att/webp</a></li>
 <li><a href="/test.pdf">/pdf</a></li>
 <li><a href="/att/test.pdf">/att/pdf</a></li>
 <li><a href="/nomime/test.pdf">/nomime/pdf</a></li>
@@ -125,6 +127,13 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     if req.uri().path().ends_with("/test.svg") {
         return Ok(builder
             .header("Content-Type", "image/svg+xml")
+            .body(Body::from("Hello World!"))
+            .unwrap());
+    }
+
+    if req.uri().path().ends_with("/test.webp") {
+        return Ok(builder
+            .header("Content-Type", "image/webp")
             .body(Body::from("Hello World!"))
             .unwrap());
     }
