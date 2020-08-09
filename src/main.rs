@@ -39,6 +39,10 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 <li><a href="/att/test.pdf">/att/pdf</a></li>
 <li><a href="/nomime/test.pdf">/nomime/pdf</a></li>
 <li><a href="/att/nomime/test.pdf">/att/nomime/pdf</a></li>
+<li><a href="/test.c">/c (text/x-c)</a></li>
+<li><a href="/att/test.c">/att/c (text/x-c)</a></li>
+<li><a href="/test-csrc.c">/c (text/x-csrc)</a></li>
+<li><a href="/att/test-csrc.c">/att/c (text/x-csrc)</a></li>
 </ul>"#,
             ))
             .unwrap());
@@ -144,6 +148,21 @@ async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
             .body(Body::from("Hello World!"))
             .unwrap());
     }
+
+    if req.uri().path().ends_with("/test.c") {
+        return Ok(builder
+            .header("Content-Type", "text/x-c")
+            .body(Body::from("Hello World!"))
+            .unwrap());
+    }
+
+    if req.uri().path().ends_with("/test-csrc.c") {
+        return Ok(builder
+            .header("Content-Type", "text/x-csrc")
+            .body(Body::from("Hello World!"))
+            .unwrap());
+    }
+
 
     let status = StatusCode::NOT_FOUND;
     Ok(builder
