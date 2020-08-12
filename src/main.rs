@@ -80,7 +80,7 @@ async fn handler(
 <label for="content-disposition">content-disposition</label><br>
 <select id="content-disposition" size=3>
   <option value="none">&lt;none&gt;</option>
-  <option value="attachment">attachment</option>
+  <option value="attachment" selected>attachment</option>
   <option value="attachment-name" id="attachment-name-option"></option>
 </select>
 </form>
