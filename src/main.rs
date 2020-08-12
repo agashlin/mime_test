@@ -1,187 +1,290 @@
 #![deny(warnings)]
 
-use std::convert::Infallible;
+use std::collections::HashMap;
+use std::convert::{Infallible, TryInto};
+use std::fs::File;
+use std::io::Read;
+use std::sync::Arc;
 
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 
-async fn hello(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let mut builder = Response::builder();
+use percent_encoding::percent_decode;
+
+static FILE_TYPES: &[&str] = &["html","txt","png","pdf","svg","xml","webp","avif","c"];
+
+async fn handler(req: Request<Body>, files: Arc<HashMap::<&str, Vec<u8>>>) -> Result<Response<Body>, Infallible> {
     if req.uri().path() == "/" {
-        return Ok(builder
-            .header("Content-Type", "text/html")
+        return Ok(Response::builder()
+            .header("Content-Type", "text/html; charset=UTF-8")
             .body(Body::from(
-                r#"Hello!
-<ul>
-<li><a href="/test.html">/html</a></li>
-<li><a href="/att/test.html">/att/html</a></li>
-<li><a href="/test.shtml">/shtml</a></li>
-<li><a href="/att/test.shtml">/att/shtml</a></li>
-<li><a href="/test.blah">/blah (text/html)</a></li>
-<li><a href="/att/test.blah">/att/blah (text/html)</a></li>
-<li><a href="/test.blah2">/blah2 (application/pdf)</a></li>
-<li><a href="/att/test.blah2">/att/blah2 (application/pdf)</a></li>
-<li><a href="/test.blah3">/blah3 (application/octet-stream)</a></li>
-<li><a href="/att/test.blah3">/att/blah3 (application/octet-stream)</a></li>
-<li><a href="/test.xml">/xml</a></li>
-<li><a href="/att/test.xml">/att/xml</a></li>
-<li><a href="/test-app.xml">/app-xml</a></li>
-<li><a href="/att/test-app.xml">/att/app-xml</a></li>
-<li><a href="/test.png">/png</a></li>
-<li><a href="/att/test.png">/att/png</a></li>
-<li><a href="/nomime/test.png">/nomime/png</a></li>
-<li><a href="/att/nomime/test.png">/att/nomime/img</a></li>
-<li><a href="/test.svg">/svg</a></li>
-<li><a href="/att/test.svg">/att/svg</a></li>
-<li><a href="/test.webp">/webp</a></li>
-<li><a href ="/att/test.webp">/att/webp</a></li>
-<li><a href="/test.pdf">/pdf</a></li>
-<li><a href="/att/test.pdf">/att/pdf</a></li>
-<li><a href="/nomime/test.pdf">/nomime/pdf</a></li>
-<li><a href="/att/nomime/test.pdf">/att/nomime/pdf</a></li>
-<li><a href="/test.c">/c (text/x-c)</a></li>
-<li><a href="/att/test.c">/att/c (text/x-c)</a></li>
-<li><a href="/test-csrc.c">/c (text/x-csrc)</a></li>
-<li><a href="/att/test-csrc.c">/att/c (text/x-csrc)</a></li>
-</ul>"#,
+                r#"<!doctype html><html><body>
+<form id="form">
+<p>
+<label for="file-type">File Type</label><br>
+<select id="file-type" size=9>
+  <option value="html">HTML</option>
+  <option value="txt">TXT</option>
+  <option value="png">PNG</option>
+  <option value="pdf" selected>PDF</option>
+  <option value="svg">SVG</option>
+  <option value="xml">XML</option>
+  <option value="webp">WebP</option>
+  <option value="avif">AVIF</option>
+  <option value="c">C source</option>
+</select>
+</p>
+
+<p>
+<label for="extension">File Extension<label><br>
+<select id="extension" size=5>
+  <option value="by-type" id="extension-by-type-option" selected></option>
+  <option value=".bin">.bin</option>
+  <option value=".png">.png</option>
+  <option value=".txt">.txt</option>
+  <option value="">&lt;none&gt;</option>
+</select>
+</p>
+
+<p>
+<label for="content-type">content-type</label><br>
+<select id="content-type" size=7>
+  <option value="by-type" id="content-type-by-type-option" selected></option>
+  <option value="none">&lt;none&gt;</option>
+  <option value="application/octet-stream">application/octet-stream</option>
+  <option value="application/xml">application/xml</option>
+  <option value="text/plain">text/plain</option>
+  <option value="text/x-c">text/x-c</option>
+  <option value="text/x-csrc">text/x-csrc</option>
+</select>
+</p>
+
+<p>
+<label for="content-disposition">content-disposition</label><br>
+<select id="content-disposition" size=3>
+  <option value="none">&lt;none&gt;</option>
+  <option value="attachment">attachment</option>
+  <option value="attachment-name" id="attachment-name-option"></option>
+</select>
+</form>
+</p>
+
+<a id="file-link" href="about:blank"></a>
+
+<script>
+"use strict";
+
+let form = document.getElementById("form");
+let allInputs = ["file-type",    "extension",    "content-type",   "content-disposition"].map(
+     n => document.getElementById(n));
+let [fileTypeInput, extensionInput, contentTypeInput, contentDispositionInput] = allInputs;
+let extensionByTypeOption = document.getElementById("extension-by-type-option");
+let contentTypeByTypeOption = document.getElementById("content-type-by-type-option");
+let attachmentNameOption = document.getElementById("attachment-name-option");
+let fileLink = document.getElementById("file-link");
+
+let kv = function(key, keyArray, valArray) {
+    let idx = keyArray.indexOf(key);
+    if (keyArray.length !== valArray.length) {
+        throw new Error("array size mismatch");
+    }
+    if (idx == -1) {
+        throw new Error(key + " not found");
+    }
+    return valArray[idx];
+};
+
+let types = [
+    {
+        key: "html",
+        ext: ".html",
+        ct: "text/html",
+    },
+    {
+        key: "txt",
+        ext: ".txt",
+        ct: "text/plain",
+    },
+    {
+        key: "png",
+        ext: ".png",
+        ct: "image/png",
+    },
+    {
+        key: "pdf",
+        ext: ".pdf",
+        ct: "application/pdf",
+    },
+    {
+        key: "svg",
+        ext: ".svg",
+        ct: "image/svg+xml",
+    },
+    {
+        key: "xml",
+        ext: ".xml",
+        ct: "text/xml",
+    },
+    {
+        key: "webp",
+        ext: ".webp",
+        ct: "image/webp",
+    },
+    {
+        key: "avif",
+        ext: ".avif",
+        ct: "image/avif",
+    },
+    {
+        key: "c",
+        ext: ".c",
+        ct: "text/x-c",
+    },
+];
+
+let typeKeys = [];
+let extensions = [];
+let contentTypes = [];
+for (const {key, ext, ct} of types) {
+    typeKeys.push(key);
+    extensions.push(ext);
+    contentTypes.push(ct);
+}
+
+extensions.forType = ty => kv(ty, typeKeys, extensions);
+contentTypes.forType = ty => kv(ty, typeKeys, contentTypes);
+
+let handleChange = function() {
+    let fileType = fileTypeInput.value;
+    let defaultExtension = extensions.forType(fileType);
+    let extension = extensionInput.value;
+    let defaultContentType = contentTypes.forType(fileType);
+    let contentType = contentTypeInput.value;
+    if (extension === "by-type") {
+        extension = defaultExtension;
+    }
+    if (contentType === "by-type") {
+        contentType = defaultContentType;
+    }
+    let fileName = `test${extension}`;
+    let attachmentNameStr = `attachment; filename="${fileName}"`;
+
+    let contentDisposition = contentDispositionInput.value;
+    if (contentDisposition === "attachment-name") {
+        contentDisposition = attachmentNameStr;
+        fileName = `shouldBeIgnored`;
+    }
+
+    extensionByTypeOption.textContent = `by type (${defaultExtension})`;
+    contentTypeByTypeOption.textContent = `by type (${defaultContentType})`;
+    attachmentNameOption.textContent = attachmentNameStr;
+
+    let link = `/dl/${fileName}?ty=${encodeURIComponent(fileType)}&ct=${encodeURIComponent(contentType)}&cd=${encodeURIComponent(contentDisposition)}`;
+
+    fileLink.href = link;
+    fileLink.textContent = link;
+};
+allInputs.map(el => el.addEventListener('change', handleChange));
+
+handleChange();
+
+</script>"#,
             ))
             .unwrap());
     }
 
-    if req.uri().path().starts_with("/att/") {
-        builder = builder.header("Content-Disposition", "attachment");
-    }
-
-    if req.uri().path().ends_with("/test.html") {
-        return Ok(builder
-            .header("Content-Type", "text/html")
-            .body(Body::from("Hello"))
+    if !req.uri().path().starts_with("/dl/") {
+        let status = StatusCode::NOT_FOUND;
+        return Ok(Response::builder()
+            .status(status)
+            .body(Body::from(status.canonical_reason().unwrap()))
             .unwrap());
     }
 
-    if req.uri().path().ends_with("/test.shtml") {
-        return Ok(builder
-            .header("Content-Type", "text/html")
-            .body(Body::from("Hello"))
+    let query: Result<_, String> = req.uri().query().ok_or("missing query".into()).and_then(|query_str| {
+        let mut query_parts: HashMap<&str,String> = query_str
+            .split('&')
+            .map(|component| {
+                let parts_vec: Vec<&str> = component.split('=').collect();
+                if parts_vec.len() != 2 {
+                    Err("malformed query".into())
+                } else {
+                    let val = percent_decode(parts_vec[1].as_bytes())
+                        .decode_utf8()
+                        .map_err(|_| "decode failed")
+                        .map(|cow| cow.into_owned())?;
+                    Ok((parts_vec[0], val))
+                }
+            })
+            .collect::<Result<_, String>>()?;
+        let mut vals = ["ty","ct","cd"]
+            .iter()
+            .map(|k| query_parts
+                .remove(k)
+                .ok_or_else(|| format!("missing {}", k)))
+            .collect::<Result<Vec<_>, String>>()?
+            .into_iter();
+        if query_parts.len() > 0 {
+            return Err("extra query parts".into());
+        }
+        Ok((vals.next().unwrap(), vals.next().unwrap(), vals.next().unwrap()))
+    });
+    if let Err(e) = query {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from(e))
             .unwrap());
     }
+    let (file_type, content_type, content_disposition) = query.unwrap();
 
-    if req.uri().path().ends_with("/test.blah") {
-        return Ok(builder
-            .header("Content-Type", "text/html")
-            .body(Body::from("Hello"))
+    // TODO: check for reasonable values here
+    let mut builder = Response::builder();
+    if content_disposition != "none" {
+        builder = builder.header("Content-Disposition", content_disposition);
+    }
+    if content_type != "none" {
+        builder = builder.header("Content-Type", content_type);
+    }
+
+    let content = files.get(file_type.as_str());
+    if content.is_none() {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from("Bad file type"))
             .unwrap());
     }
+    let content = content.unwrap();
 
-    if req.uri().path().ends_with("/test.blah2") {
-        return Ok(builder
-            .header("Content-Type", "application/pdf")
-            .body(Body::from("Hello"))
-            .unwrap());
-    }
+    builder.body(Body::from(content.clone()))
+        .or_else(|_|
+            Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from("Internal server error"))
+                .unwrap()))
 
-    if req.uri().path().ends_with("/test.blah3") {
-        return Ok(builder
-            .header("Content-Type", "application/octet-stream")
-            .body(Body::from("Hello"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.xml") {
-        return Ok(builder
-            .header("Content-Type", "text/xml")
-            .body(Body::from(
-                r#"<?xml version = "1.0" encoding = "utf-8"?>
-
-<something>
-</something>
-"#,
-            ))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test-app.xml") {
-        return Ok(builder
-            .header("Content-Type", "application/xml")
-            .body(Body::from(
-                r#"<?xml version = "1.0" encoding = "utf-8"?>
-
-<something>
-</something>
-"#,
-            ))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/nomime/test.png") {
-        return Ok(builder.body(Body::from("Hello World!")).unwrap());
-    }
-
-    if req.uri().path().ends_with("/nomime/test.pdf") {
-        return Ok(builder.body(Body::from("Hello World!")).unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.png") {
-        return Ok(builder
-            .header("Content-Type", "image/png")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.svg") {
-        return Ok(builder
-            .header("Content-Type", "image/svg+xml")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.webp") {
-        return Ok(builder
-            .header("Content-Type", "image/webp")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.pdf") {
-        return Ok(builder
-            .header("Content-Type", "application/pdf")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test.c") {
-        return Ok(builder
-            .header("Content-Type", "text/x-c")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-    if req.uri().path().ends_with("/test-csrc.c") {
-        return Ok(builder
-            .header("Content-Type", "text/x-csrc")
-            .body(Body::from("Hello World!"))
-            .unwrap());
-    }
-
-
-    let status = StatusCode::NOT_FOUND;
-    Ok(builder
-        .status(status)
-        .body(Body::from(status.canonical_reason().unwrap()))
-        .unwrap())
 }
 
 #[tokio::main]
 pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pretty_env_logger::init();
 
+    let files = FILE_TYPES.iter().map(|ty: &&str| -> Result<(&str, Vec<u8>), Box<dyn std::error::Error + Send + Sync>> {
+        let file_name = format!("files/example.{}", ty);
+        let mut file = File::open(&file_name).map_err(|e| format!("failed opening {}: {}", &file_name, e))?;
+        let mut bytes = Vec::with_capacity(file.metadata()?.len().try_into()?);
+        file.read_to_end(&mut bytes)?;
+        Ok((*ty, bytes))
+    }).collect::<Result<_, _>>()?;
+    let files = Arc::new(files);
+
     // For every connection, we must make a `Service` to handle all
     // incoming HTTP requests on said connection.
-    let make_svc = make_service_fn(|_conn| {
+    let make_svc = make_service_fn(move |_conn| {
         // This is the `Service` that will handle the connection.
         // `service_fn` is a helper to convert a function that
         // returns a Response into a `Service`.
-        async { Ok::<_, Infallible>(service_fn(hello)) }
+        let inner_files = Arc::clone(&files);
+        async { Ok::<_, Infallible>(service_fn(move |req| handler(req, Arc::clone(&inner_files)))) }
     });
 
     let addr = ([0, 0, 0, 0], 3000).into();
