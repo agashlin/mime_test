@@ -217,7 +217,7 @@ handleChange();
     let query: Result<_, &'static str> =
         req.uri()
             .query()
-            .ok_or("missing query".into())
+            .ok_or("missing query")
             .and_then(|query_str| {
                 let mut query_parts: HashMap<&str, String> = query_str
                     .split('&')
