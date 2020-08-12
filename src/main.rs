@@ -301,7 +301,7 @@ pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send 
         async move { Ok::<_, Infallible>(service_fn(move |req| handler(req, files))) }
     });
 
-    let addr = ([0, 0, 0, 0], 3000).into();
+    let addr = ([127, 0, 0, 1], 4000).into();
 
     let server = Server::bind(&addr).serve(make_svc);
 
