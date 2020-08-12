@@ -10,17 +10,27 @@ use hyper::{Body, Request, Response, Server, StatusCode};
 
 use percent_encoding::percent_decode;
 
-static FILE_TYPES: &[&str] = &["html","txt","png","pdf","svg","xml","webp","avif","c"];
+static FILE_TYPES: &[&str] = &[
+    "html", "txt", "png", "pdf", "svg", "xml", "webp", "avif", "c",
+];
 
-fn error_response(message: Option<&'static str>, status: StatusCode) -> Result<Response<Body>, Infallible> {
+fn error_response(
+    message: Option<&'static str>,
+    status: StatusCode,
+) -> Result<Response<Body>, Infallible> {
     Ok(Response::builder()
         .header("Content-Type", "text/plain; charset=UTF-8")
         .status(status)
-        .body(Body::from(message.unwrap_or_else(|| status.canonical_reason().unwrap_or(""))))
+        .body(Body::from(
+            message.unwrap_or_else(|| status.canonical_reason().unwrap_or("")),
+        ))
         .unwrap())
 }
 
-async fn handler(req: Request<Body>, files: &HashMap<&str, &'static [u8]>) -> Result<Response<Body>, Infallible> {
+async fn handler(
+    req: Request<Body>,
+    files: &HashMap<&str, &'static [u8]>,
+) -> Result<Response<Body>, Infallible> {
     if req.uri().path() == "/" {
         return Ok(Response::builder()
             .header("Content-Type", "text/html; charset=UTF-8")
@@ -204,34 +214,40 @@ handleChange();
         return error_response(None, StatusCode::NOT_FOUND);
     }
 
-    let query: Result<_, &'static str> = req.uri().query().ok_or("missing query".into()).and_then(|query_str| {
-        let mut query_parts: HashMap<&str, String> = query_str
-            .split('&')
-            .map(|component| {
-                let parts_vec: Vec<&str> = component.split('=').collect();
-                if parts_vec.len() != 2 {
-                    Err("malformed query")
-                } else {
-                    let val = percent_decode(parts_vec[1].as_bytes())
-                        .decode_utf8()
-                        .map_err(|_| "decode failed")
-                        .map(|cow| cow.into_owned())?;
-                    Ok((parts_vec[0], val))
+    let query: Result<_, &'static str> =
+        req.uri()
+            .query()
+            .ok_or("missing query".into())
+            .and_then(|query_str| {
+                let mut query_parts: HashMap<&str, String> = query_str
+                    .split('&')
+                    .map(|component| {
+                        let parts_vec: Vec<&str> = component.split('=').collect();
+                        if parts_vec.len() != 2 {
+                            Err("malformed query")
+                        } else {
+                            let val = percent_decode(parts_vec[1].as_bytes())
+                                .decode_utf8()
+                                .map_err(|_| "decode failed")
+                                .map(|cow| cow.into_owned())?;
+                            Ok((parts_vec[0], val))
+                        }
+                    })
+                    .collect::<Result<_, _>>()?;
+                let mut vals = ["ty", "ct", "cd"]
+                    .iter()
+                    .map(|k| query_parts.remove(k).ok_or("missing query part"))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter();
+                if query_parts.len() > 0 {
+                    return Err("extra query parts".into());
                 }
-            })
-            .collect::<Result<_, _>>()?;
-        let mut vals = ["ty","ct","cd"]
-            .iter()
-            .map(|k| query_parts
-                .remove(k)
-                .ok_or("missing query part"))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter();
-        if query_parts.len() > 0 {
-            return Err("extra query parts".into());
-        }
-        Ok((vals.next().unwrap(), vals.next().unwrap(), vals.next().unwrap()))
-    });
+                Ok((
+                    vals.next().unwrap(),
+                    vals.next().unwrap(),
+                    vals.next().unwrap(),
+                ))
+            });
     if let Err(e) = query {
         return error_response(Some(e), StatusCode::BAD_REQUEST);
     }
@@ -252,23 +268,28 @@ handleChange();
     }
     let content = content.unwrap();
 
-    builder.body(Body::from(*content))
-        .or_else(|_|
-            error_response(None, StatusCode::INTERNAL_SERVER_ERROR))
-
+    builder
+        .body(Body::from(*content))
+        .or_else(|_| error_response(None, StatusCode::INTERNAL_SERVER_ERROR))
 }
 
 #[tokio::main]
 pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pretty_env_logger::init();
 
-    let files = FILE_TYPES.iter().map(|ty: &&str| -> Result<(&str, &'static [u8]), Box<dyn std::error::Error + Send + Sync>> {
-        let file_name = format!("files/example.{}", ty);
-        let mut file = File::open(&file_name).map_err(|e| format!("failed opening {}: {}", &file_name, e))?;
-        let mut bytes = Vec::with_capacity(file.metadata()?.len().try_into()?);
-        file.read_to_end(&mut bytes)?;
-        Ok((*ty, Box::leak(bytes.into_boxed_slice())))
-    }).collect::<Result<_, _>>()?;
+    let files = FILE_TYPES
+        .iter()
+        .map(
+            |ty: &&str| -> Result<(&str, &'static [u8]), Box<dyn std::error::Error + Send + Sync>> {
+                let file_name = format!("files/example.{}", ty);
+                let mut file = File::open(&file_name)
+                    .map_err(|e| format!("failed opening {}: {}", &file_name, e))?;
+                let mut bytes = Vec::with_capacity(file.metadata()?.len().try_into()?);
+                file.read_to_end(&mut bytes)?;
+                Ok((*ty, Box::leak(bytes.into_boxed_slice())))
+            },
+        )
+        .collect::<Result<_, _>>()?;
     let files: &'static HashMap<&str, &'static [u8]> = Box::leak(Box::new(files));
 
     // For every connection, we must make a `Service` to handle all
