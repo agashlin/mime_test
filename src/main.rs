@@ -12,6 +12,14 @@ use percent_encoding::percent_decode;
 
 static FILE_TYPES: &[&str] = &["html","txt","png","pdf","svg","xml","webp","avif","c"];
 
+fn error_response(message: Option<&'static str>, status: StatusCode) -> Result<Response<Body>, Infallible> {
+    Ok(Response::builder()
+        .header("Content-Type", "text/plain; charset=UTF-8")
+        .status(status)
+        .body(Body::from(message.unwrap_or_else(|| status.canonical_reason().unwrap_or(""))))
+        .unwrap())
+}
+
 async fn handler(req: Request<Body>, files: &HashMap<&str, &'static [u8]>) -> Result<Response<Body>, Infallible> {
     if req.uri().path() == "/" {
         return Ok(Response::builder()
@@ -193,20 +201,16 @@ handleChange();
     }
 
     if !req.uri().path().starts_with("/dl/") {
-        let status = StatusCode::NOT_FOUND;
-        return Ok(Response::builder()
-            .status(status)
-            .body(Body::from(status.canonical_reason().unwrap()))
-            .unwrap());
+        return error_response(None, StatusCode::NOT_FOUND);
     }
 
-    let query: Result<_, String> = req.uri().query().ok_or("missing query".into()).and_then(|query_str| {
-        let mut query_parts: HashMap<&str,String> = query_str
+    let query: Result<_, &'static str> = req.uri().query().ok_or("missing query".into()).and_then(|query_str| {
+        let mut query_parts: HashMap<&str, String> = query_str
             .split('&')
             .map(|component| {
                 let parts_vec: Vec<&str> = component.split('=').collect();
                 if parts_vec.len() != 2 {
-                    Err("malformed query".into())
+                    Err("malformed query")
                 } else {
                     let val = percent_decode(parts_vec[1].as_bytes())
                         .decode_utf8()
@@ -215,13 +219,13 @@ handleChange();
                     Ok((parts_vec[0], val))
                 }
             })
-            .collect::<Result<_, String>>()?;
+            .collect::<Result<_, _>>()?;
         let mut vals = ["ty","ct","cd"]
             .iter()
             .map(|k| query_parts
                 .remove(k)
-                .ok_or_else(|| format!("missing {}", k)))
-            .collect::<Result<Vec<_>, String>>()?
+                .ok_or("missing query part"))
+            .collect::<Result<Vec<_>, _>>()?
             .into_iter();
         if query_parts.len() > 0 {
             return Err("extra query parts".into());
@@ -229,10 +233,7 @@ handleChange();
         Ok((vals.next().unwrap(), vals.next().unwrap(), vals.next().unwrap()))
     });
     if let Err(e) = query {
-        return Ok(Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from(e))
-            .unwrap());
+        return error_response(Some(e), StatusCode::BAD_REQUEST);
     }
     let (file_type, content_type, content_disposition) = query.unwrap();
 
@@ -247,19 +248,13 @@ handleChange();
 
     let content = files.get(file_type.as_str());
     if content.is_none() {
-        return Ok(Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from("Bad file type"))
-            .unwrap());
+        return error_response(Some("Bad file type"), StatusCode::BAD_REQUEST);
     }
     let content = content.unwrap();
 
     builder.body(Body::from(*content))
         .or_else(|_|
-            Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from("Internal server error"))
-                .unwrap()))
+            error_response(None, StatusCode::INTERNAL_SERVER_ERROR))
 
 }
 
