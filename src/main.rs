@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::convert::{Infallible, TryInto};
 use std::fs::File;
 use std::io::Read;
-use std::sync::Arc;
 
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
@@ -13,7 +12,7 @@ use percent_encoding::percent_decode;
 
 static FILE_TYPES: &[&str] = &["html","txt","png","pdf","svg","xml","webp","avif","c"];
 
-async fn handler(req: Request<Body>, files: Arc<HashMap::<&str, Vec<u8>>>) -> Result<Response<Body>, Infallible> {
+async fn handler(req: Request<Body>, files: &HashMap<&str, &'static [u8]>) -> Result<Response<Body>, Infallible> {
     if req.uri().path() == "/" {
         return Ok(Response::builder()
             .header("Content-Type", "text/html; charset=UTF-8")
@@ -255,7 +254,7 @@ handleChange();
     }
     let content = content.unwrap();
 
-    builder.body(Body::from(content.clone()))
+    builder.body(Body::from(*content))
         .or_else(|_|
             Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -268,14 +267,14 @@ handleChange();
 pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pretty_env_logger::init();
 
-    let files = FILE_TYPES.iter().map(|ty: &&str| -> Result<(&str, Vec<u8>), Box<dyn std::error::Error + Send + Sync>> {
+    let files = FILE_TYPES.iter().map(|ty: &&str| -> Result<(&str, &'static [u8]), Box<dyn std::error::Error + Send + Sync>> {
         let file_name = format!("files/example.{}", ty);
         let mut file = File::open(&file_name).map_err(|e| format!("failed opening {}: {}", &file_name, e))?;
         let mut bytes = Vec::with_capacity(file.metadata()?.len().try_into()?);
         file.read_to_end(&mut bytes)?;
-        Ok((*ty, bytes))
+        Ok((*ty, Box::leak(bytes.into_boxed_slice())))
     }).collect::<Result<_, _>>()?;
-    let files = Arc::new(files);
+    let files: &'static HashMap<&str, &'static [u8]> = Box::leak(Box::new(files));
 
     // For every connection, we must make a `Service` to handle all
     // incoming HTTP requests on said connection.
@@ -283,8 +282,7 @@ pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send 
         // This is the `Service` that will handle the connection.
         // `service_fn` is a helper to convert a function that
         // returns a Response into a `Service`.
-        let inner_files = Arc::clone(&files);
-        async { Ok::<_, Infallible>(service_fn(move |req| handler(req, Arc::clone(&inner_files)))) }
+        async move { Ok::<_, Infallible>(service_fn(move |req| handler(req, files))) }
     });
 
     let addr = ([0, 0, 0, 0], 3000).into();
