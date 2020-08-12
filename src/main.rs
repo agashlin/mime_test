@@ -36,6 +36,27 @@ async fn handler(
             .header("Content-Type", "text/html; charset=UTF-8")
             .body(Body::from(
                 r#"<!doctype html><html><body>
+<h1>File type tests</h1>
+<h2>Prebuilt</h2>
+<ul>
+<li>content-disposition: attachment
+    <ul>
+    <li>default content-type and extension
+        <ul>
+        <li><a href="https://mime.ty.ax/dl/test.pdf?ty=pdf&ct=application%2Fpdf&cd=attachment">PDF</a></li>
+        <li><a href="https://mime.ty.ax/dl/test.xml?ty=xml&ct=text%2Fxml&cd=attachment">XML</a></li>
+        <li><a href="https://mime.ty.ax/dl/test.svg?ty=svg&ct=image%2Fsvg%2Bxml&cd=attachment">SVG</a></li>
+        <li><a href="https://mime.ty.ax/dl/test.webp?ty=webp&ct=image%2Fwebp&cd=attachment">WebP</a></li>
+        </ul>
+    </li>
+    <li><a href="https://mime.ty.ax/dl/test.pdf?ty=pdf&ct=application%2Foctet-stream&cd=attachment">.pdf application/octet-stream</a></li>
+    <li><a href="https://mime.ty.ax/dl/test.svg?ty=svg&ct=application%2Foctet-stream&cd=attachment">.svg application/octet-stream</a></li>
+    <li><a href="https://mime.ty.ax/dl/test.bin?ty=webp&ct=image%2Fwebp&cd=attachment">.bin WebP</a></li>
+    </ul>
+</li>
+</ul>
+<hr>
+<h2>Custom</h2>
 <form id="form">
 <p>
 <label for="file-type">File Type</label><br>
