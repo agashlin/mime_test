@@ -52,6 +52,7 @@ async fn handler(
         <li><a href="https://mime.ty.ax/dl/test.xml?ty=xml&ct=text%2Fxml&cd=attachment">XML</a></li>
         <li><a href="https://mime.ty.ax/dl/test.svg?ty=svg&ct=image%2Fsvg%2Bxml&cd=attachment">SVG</a></li>
         <li><a href="https://mime.ty.ax/dl/test.webp?ty=webp&ct=image%2Fwebp&cd=attachment">WebP</a></li>
+        <li><a href="https://mime.ty.ax/dl/test.avif?ty=webp&ct=image%2Favif&cd=attachment">AVIF</a></li>
         </ul>
     </li>
     <li><a href="https://mime.ty.ax/dl/test.pdf?ty=pdf&ct=application%2Foctet-stream&cd=attachment">.pdf application/octet-stream</a></li>
