@@ -63,6 +63,7 @@ async fn handler(
 </ul>
 <hr>
 <h2>Custom</h2>
+
 <form id="form">
 <p>
 <label for="file-type">File Type</label><br>
@@ -114,6 +115,10 @@ async fn handler(
 </p>
 
 <a id="file-link" href="about:blank"></a>
+
+<hr>
+
+<a href="https://github.com/agashlin/mime_test/">Source on GitHub</a>
 
 <script>
 "use strict";
