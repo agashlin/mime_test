@@ -35,7 +35,12 @@ async fn handler(
         return Ok(Response::builder()
             .header("Content-Type", "text/html; charset=UTF-8")
             .body(Body::from(
-                r#"<!doctype html><html><body>
+                r#"<!doctype html><html>
+<head>
+<title>File type tests</title>
+<link rel="icon" type="image/png" href="data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQAAAAA3iMLMAAAAH0lEQVR4AWP8zwBCD9RB6IM8FP1Qh6I/zlD0rxGiEgClfRHhbGAkhQAAAABJRU5ErkJggg=="/>
+</head>
+<body>
 <h1>File type tests</h1>
 <h2>Prebuilt</h2>
 <ul>
