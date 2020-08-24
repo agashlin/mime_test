@@ -307,8 +307,8 @@ Disallow: /"#,
                     .map(|k| query_parts.remove(k).ok_or("missing query part"))
                     .collect::<Result<Vec<_>, _>>()?
                     .into_iter();
-                if query_parts.len() > 0 {
-                    return Err("extra query parts".into());
+                if !query_parts.is_empty() {
+                    return Err("extra query parts");
                 }
                 Ok((
                     vals.next().unwrap(),
