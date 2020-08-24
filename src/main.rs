@@ -261,6 +261,16 @@ handleChange();
             .unwrap());
     }
 
+    if req.uri().path() == "/robots.txt" {
+        return Ok(Response::builder()
+            .header("Content-Type", "text/plain; charset=UTF-8")
+            .body(Body::from(
+                r#"User-agent: *
+Disallow: /"#,
+            ))
+            .unwrap());
+    }
+
     if !req.uri().path().starts_with("/dl/") {
         return error_response(None, StatusCode::NOT_FOUND);
     }
