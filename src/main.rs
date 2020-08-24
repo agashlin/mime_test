@@ -48,16 +48,34 @@ async fn handler(
     <ul>
     <li>default content-type and extension
         <ul>
-        <li><a href="https://mime.ty.ax/dl/test.pdf?ty=pdf&ct=application%2Fpdf&cd=attachment">PDF</a></li>
-        <li><a href="https://mime.ty.ax/dl/test.xml?ty=xml&ct=text%2Fxml&cd=attachment">XML</a></li>
-        <li><a href="https://mime.ty.ax/dl/test.svg?ty=svg&ct=image%2Fsvg%2Bxml&cd=attachment">SVG</a></li>
-        <li><a href="https://mime.ty.ax/dl/test.webp?ty=webp&ct=image%2Fwebp&cd=attachment">WebP</a></li>
-        <li><a href="https://mime.ty.ax/dl/test.avif?ty=webp&ct=image%2Favif&cd=attachment">AVIF</a></li>
+        <li><a href="/dl/test.pdf?ty=pdf&amp;ct=application%2Fpdf&amp;cd=attachment">PDF</a></li>
+        <li><a href="/dl/test.xml?ty=xml&amp;ct=text%2Fxml&amp;cd=attachment">XML</a></li>
+        <li><a href="/dl/test.svg?ty=svg&amp;ct=image%2Fsvg%2Bxml&amp;cd=attachment">SVG</a></li>
+        <li><a href="/dl/test.webp?ty=webp&amp;ct=image%2Fwebp&amp;cd=attachment">WebP</a></li>
+        <li><a href="/dl/test.avif?ty=webp&amp;ct=image%2Favif&amp;cd=attachment">AVIF</a></li>
         </ul>
     </li>
-    <li><a href="https://mime.ty.ax/dl/test.pdf?ty=pdf&ct=application%2Foctet-stream&cd=attachment">.pdf application/octet-stream</a></li>
-    <li><a href="https://mime.ty.ax/dl/test.svg?ty=svg&ct=application%2Foctet-stream&cd=attachment">.svg application/octet-stream</a></li>
-    <li><a href="https://mime.ty.ax/dl/test.bin?ty=webp&ct=image%2Fwebp&cd=attachment">.bin WebP</a></li>
+    <li><a href="/dl/test.pdf?ty=pdf&amp;ct=application%2Foctet-stream&amp;cd=attachment">.pdf application/octet-stream</a></li>
+    <li><a href="/dl/test.svg?ty=svg&amp;ct=application%2Foctet-stream&amp;cd=attachment">.svg application/octet-stream</a></li>
+    <li><a href="/dl/test.bin?ty=webp&amp;ct=image%2Fwebp&amp;cd=attachment">.bin WebP</a></li>
+    <li>default content-type, no extension
+        <ul>
+        <li><a href="/dl/test?ty=pdf&amp;ct=application%2Fpdf&amp;cd=attachment">PDF</a></li>
+        <li><a href="/dl/test?ty=svg&amp;ct=image%2Fsvg%2Bxml&amp;cd=attachment">SVG</a></li>
+        <li><a href="/dl/test?ty=xml&amp;ct=text%2Fxml&amp;cd=attachment">XML</a></li>
+        <li><a href="/dl/test?ty=webp&amp;ct=image%2Fwebp&amp;cd=attachment">WebP</a></li>
+        <li><a href="/dl/test?ty=avif&amp;ct=image%2Favif&amp;cd=attachment">AVIF</a></li>
+        </ul>
+    </li>
+    </ul>
+</li>
+<li>no content-disposition, default content-type, no extension
+    <ul>
+    <li><a href="/dl/test?ty=pdf&amp;ct=application%2Fpdf&amp;cd=none">PDF</a></li>
+    <li><a href="/dl/test?ty=svg&amp;ct=image%2Fsvg%2Bxml&amp;cd=none">SVG</a></li>
+    <li><a href="/dl/test?ty=xml&amp;ct=text%2Fxml&amp;cd=none">XML</a></li>
+    <li><a href="/dl/test?ty=webp&amp;ct=image%2Fwebp&amp;cd=none">WebP</a></li>
+    <li><a href="/dl/test?ty=avif&amp;ct=image%2Favif&amp;cd=none">AVIF</a></li>
     </ul>
 </li>
 </ul>
@@ -237,7 +255,8 @@ allInputs.map(el => el.addEventListener('change', handleChange));
 
 handleChange();
 
-</script>"#,
+</script>
+</body></html>"#,
             ))
             .unwrap());
     }
