@@ -38,7 +38,6 @@ async fn handler(
                 r#"<!doctype html><html lang="en">
 <head>
 <title>File type tests</title>
-<link rel="icon" type="image/png" href="data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQAAAAA3iMLMAAAAH0lEQVR4AWP8zwBCD9RB6IM8FP1Qh6I/zlD0rxGiEgClfRHhbGAkhQAAAABJRU5ErkJggg=="/>
 </head>
 <body>
 <h1>File type tests</h1>
@@ -270,6 +269,15 @@ Disallow: /"#,
             .unwrap());
     }
 
+    if req.uri().path() == "/favicon.ico" {
+        let content = files.get("favicon").unwrap();
+        return Ok(Response::builder()
+            .header("Content-Type", "image/png")
+            .body(Body::from(*content))
+            .or_else(|_| error_response(None, StatusCode::INTERNAL_SERVER_ERROR))
+            .unwrap());
+    }
+
     if !req.uri().path().starts_with("/dl/") {
         return error_response(None, StatusCode::NOT_FOUND);
     }
@@ -340,13 +348,17 @@ pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send 
     let files = FILE_TYPES
         .iter()
         .map(
-            |ty: &&str| -> Result<(&str, &'static [u8]), Box<dyn std::error::Error + Send + Sync>> {
-                let file_name = format!("files/example.{}", ty);
+            |ty: &&str| -> (&str, String) {
+                (*ty, format!("files/example.{}", ty))
+            })
+        .chain(std::iter::once(("favicon", "files/favicon.ico".into())))
+        .map(
+            |(ty, file_name): (&str, String)| -> Result<(&str, &'static [u8]), Box<dyn std::error::Error + Send + Sync>> {
                 let mut file = File::open(&file_name)
                     .map_err(|e| format!("failed opening {}: {}", &file_name, e))?;
                 let mut bytes = Vec::with_capacity(file.metadata()?.len().try_into()?);
                 file.read_to_end(&mut bytes)?;
-                Ok((*ty, Box::leak(bytes.into_boxed_slice())))
+                Ok((ty, Box::leak(bytes.into_boxed_slice())))
             },
         )
         .collect::<Result<_, _>>()?;
