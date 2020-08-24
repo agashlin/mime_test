@@ -35,7 +35,7 @@ async fn handler(
         return Ok(Response::builder()
             .header("Content-Type", "text/html; charset=UTF-8")
             .body(Body::from(
-                r#"<!doctype html><html>
+                r#"<!doctype html><html lang="en">
 <head>
 <title>File type tests</title>
 <link rel="icon" type="image/png" href="data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQAAAAA3iMLMAAAAH0lEQVR4AWP8zwBCD9RB6IM8FP1Qh6I/zlD0rxGiEgClfRHhbGAkhQAAAABJRU5ErkJggg=="/>
@@ -99,7 +99,7 @@ async fn handler(
 </p>
 
 <p>
-<label for="extension">File Extension<label><br>
+<label for="extension">File Extension</label><br>
 <select id="extension" size=5>
   <option value="by-type" id="extension-by-type-option" selected></option>
   <option value=".bin">.bin</option>
@@ -130,7 +130,6 @@ async fn handler(
   <option value="attachment-name" id="attachment-name-option"></option>
 </select>
 </form>
-</p>
 
 <a id="file-link" href="about:blank"></a>
 
